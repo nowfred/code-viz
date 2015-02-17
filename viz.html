@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html class="ocks-org do-not-copy">
+<meta charset="utf-8">
+<title>Code Viz</title>
+<link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/css/bootstrap.min.css">
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+<script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>
+<style>
+
+#chart {
+  /*width: 960px;*/
+  /*height: 500px;*/
+  border: solid 1px #ccc;
+}
+
+text {
+  font: 10px sans-serif;
+}
+
+.background {
+  fill: none;
+  pointer-events: all;
+}
+
+#chart .node {
+  stroke: #fff;
+  stroke-width: 1.5px;
+}
+
+#chart .link {
+  stroke: #999;
+  stroke-opacity: .6;
+  stroke-width: 1.5px;
+}
+
+.axis path, .axis line {
+  fill: none;
+  stroke: #fff;
+  shape-rendering: crispEdges;
+}
+
+.form-group {
+  position: absolute;
+  top: 0;
+  left: 33px;
+}
+
+</style>
+
+<header>
+</header>
+
+<div class="form-group">
+  <h1>Python Application Function Imports</h1>
+  <form id="file-name2">
+  <h3><small>Each node represents a file - hover over to see the name.<br>Each link represents a where-written <---> where-imported pair.</small></h3>
+  <h2><small>Search for part of a file name</small></h2><input class="form-control" id='file-name' type="text" name="filename" style="width:300px;"><br>
+  <h3><small><span id='nodeNumber'>AllOfEm</span> files with '<span id='search-text'></span>' in their path.</h3></small>
+  <input class='btn btn-warning' type='button' onclick="highlight(document.getElementById('file-name').value)" value="Search">
+  <input class='btn btn-info' type='button' onclick="zeroBorders()" value="Clear search">
+  <br><br>
+  <input id='centrality' class='btn btn-warning' type='button' onclick="colorByCentrality()" value="Centrality Colors">
+  <input id='topLevel' class='btn btn-warning' type='button' onclick="colorByTopLevel()" value="Directory Colors">
+  
+</form>
+</div>
+
+
+
+<p id="chart">
+
+<script src="http://d3js.org/d3.v2.min.js?2.9.4"></script>
+<script>
+function zeroBorders() {
+  d3.selectAll('.node').transition().duration(500).style('stroke-width', 1.5).style('stroke', '#fff'); 
+  zeroBordersAdditional();
+}
+
+function colorByCentrality() {
+  var color = d3.scale.linear().domain([1, 50]).range(["yellow", "red"]);
+  d3.selectAll('.node').transition().duration(500)
+    .style('fill', function(d) { return color(d.connections) }); 
+}
+
+function colorByTopLevel() {
+  var color = d3.scale.category20();
+  d3.selectAll('.node').transition().duration(500)
+    .style('fill', function(d) { return color(d.name.split('.')[0]) }); 
+}
+
+function zeroBordersAdditional() {
+  document.getElementById("nodeNumber").innerHTML = 170;
+  document.getElementById("search-text").innerHTML = '';
+  d3.selectAll('.node').transition().duration(0).style('stroke', 'grey').style('stroke-width', 1.5);
+}
+
+
+function highlight(value) {
+  document.getElementById("nodeNumber").innerHTML = 0;
+  document.getElementById("search-text").innerHTML = value;
+  d3.selectAll('.node').transition().duration(0).style('stroke', 'grey').style('stroke-width', 1.5);
+  d3.selectAll('.node').transition().duration(500).style('stroke', function(d) { 
+      color = (d.name.indexOf(value) > -1) ? 'red' : '#fff';
+      if (color === 'red') {
+        var number = parseInt(document.getElementById("nodeNumber").innerHTML);
+        number = number += 1;
+        document.getElementById("nodeNumber").innerHTML = number;
+      }
+      return color}).style('stroke-width', function(d) { return (d.name.indexOf(value) > -1) ? 8 : 1.5; });
+  
+};
+</script>
+
+<script>
+(function chart1() {
+  var width = window.outerWidth,
+      height = window.outerHeight;
+
+  var color = d3.scale.category20();
+
+  var force = d3.layout.force()
+      .charge(-200)
+      .linkDistance(70)
+      .size([width, height]);
+
+  var svg = d3.select("#chart").append("svg")
+      .attr("width", width)
+      .attr("height", height);
+
+  svg.append("rect")
+      .attr("class", "background")
+      .attr("width", width)
+      .attr("height", height);
+
+  d3.json("code.json", function(data) {
+    var n = data.nodes.length;
+
+    // define arrow markers for graph links
+    svg.append('svg:defs').append('svg:marker')
+        .attr('id', 'end-arrow')
+        .attr('viewBox', '0 -5 10 10')
+        .attr('refX', 6)
+        .attr('markerWidth', 3)
+        .attr('markerHeight', 3)
+        .attr('orient', 'auto')
+      .append('svg:path')
+        .attr('d', 'M0,-5L10,0L0,5')
+        .attr('fill', '#000');
+
+    svg.append('svg:defs').append('svg:marker')
+        .attr('id', 'start-arrow')
+        .attr('viewBox', '0 -5 10 10')
+        .attr('refX', 4)
+        .attr('markerWidth', 3)
+        .attr('markerHeight', 3)
+        .attr('orient', 'auto')
+      .append('svg:path')
+        .attr('d', 'M10,-5L0,0L10,5')
+        .attr('fill', '#000');
+
+    // force.nodes(data.nodes).links(data.links);
+
+    // Initialize the positions deterministically, for better results.
+    // data.nodes.forEach(function(d, i) { d.x = d.y = width / n * i; });
+
+    // Run the layout a fixed number of times.
+    // The ideal number of times scales with graph complexity.
+    // Of course, don't run too long—you'll hang the page!
+    // force.start();
+    // for (var i = n; i > 0; --i) force.tick();
+    // force.stop();
+
+    data.nodes.forEach(function(d, i) { d.x = d.y = width / n * i; });
+
+    // Center the nodes in the middle.
+    var ox = 0, oy = 0;
+    data.nodes.forEach(function(d) { ox += d.x, oy += d.y; });
+    ox = ox / n - width / 2, oy = oy / n - height / 2;
+    data.nodes.forEach(function(d) { d.x -= ox, d.y -= oy; });
+
+    nodeMap = {};
+
+    centralities = []
+
+    data.nodes.forEach(function(d) { 
+      centralities.push(d.connections);
+      nodeMap[d.id] = d; });
+
+    document.getElementById("nodeNumber").innerHTML = data.nodes.length;
+
+    data.links.forEach(function(l) {
+        l.source = nodeMap[l.source];
+        l.target = nodeMap[l.target]; 
+    });
+
+    force.nodes(data.nodes).links(data.links).start();
+
+    var link = svg.selectAll(".link")
+        .data(data.links)
+      .enter().append("line")
+        .attr("class", "link")
+        .attr("x1", function(d) { return d.source.x; })
+        .attr("y1", function(d) { return d.source.y; })
+        .attr("x2", function(d) { return d.target.x; })
+        .attr("y2", function(d) { return d.target.y; })
+        .style("stroke-width", function(d) { return Math.sqrt(d.value); });
+
+    var node = svg.selectAll(".node")
+        .data(data.nodes)
+      .enter().append("circle")
+        .attr("class", "node")
+        .attr("cx", function(d) { return d.x; })
+        .attr("cy", function(d) { return d.y; })
+        .attr("r", function(d) { return Math.sqrt(d.connections) * 5; })
+        .style("fill", function(d) { return color(d.name.split('.')[0]); })
+      .call(force.drag);
+
+  node.append("title")
+    .text(function(d) { return d.name; });
+
+  force.on("tick", function() {
+    function condition(value, xOrY) { 
+      if ( xOrY === 'x' ) {
+        if (value > width) {
+          return width
+        }
+        else if (xOrY === 'y') {
+          if (value > width) {
+            return width
+          }
+        }
+
+      }
+      if (value < 0) {
+        return 0
+      }
+    }
+    link.attr("x1", function(d) { return d.source.x; })
+        .attr("y1", function(d) { return d.source.y; })
+        .attr("x2", function(d) { return d.target.x; })
+        .attr("y2", function(d) { return d.target.y; });
+
+    node.attr("cx", function(d) { return d.x; })
+        .attr("cy", function(d) { return d.y; });
+});
+})
+})
+();
+
+</script>
